@@ -1,35 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Gửi Webhook qua Netlify</title>
+  <title>Gửi Webhook DingTalk</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
-    textarea { width: 100%; height: 100px; }
-    button { margin-top: 10px; padding: 10px 20px; }
+    body { font-family: sans-serif; padding: 2em; max-width: 600px; margin: auto; }
+    input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
+    button { padding: 10px 20px; }
   </style>
 </head>
 <body>
-  <h2>Gửi tin nhắn đến DingTalk (qua Netlify Function)</h2>
-  <textarea id="message" placeholder="Nhập nội dung tại đây..."></textarea><br>
-  <button onclick="send()">Gửi</button>
+  <h2>Gửi tin nhắn đến Webhook (qua Netlify Function)</h2>
+  <label>🔐 Webhook URL:</label>
+  <input type="text" id="webhookUrl" placeholder="Dán Webhook URL của DingTalk tại đây">
 
+  <label>✉️ Nội dung:</label>
+  <textarea id="message" placeholder="Nhập nội dung cần gửi"></textarea><br>
+
+  <button onclick="send()">Gửi</button>
   <p id="status"></p>
 
   <script>
     async function send() {
-      const msg = document.getElementById('message').value;
-      
+      const url = document.getElementById('webhookUrl').value.trim();
+      const msg = document.getElementById('message').value.trim();
+
+      if (!url || !msg) {
+        document.getElementById('status').textContent = '⚠️ Nhập đủ Webhook URL và nội dung.';
+        return;
+      }
 
       const res = await fetch('/.netlify/functions/sendMessage', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg })
+        body: JSON.stringify({ webhook: url, message: msg })
       });
 
-      const result = await res.json();
+      let result;
+      try {
+        result = await res.json();
+      } catch {
+        result = { error: "Không nhận được phản hồi JSON từ server." };
+      }
+
       document.getElementById('status').textContent =
-        res.ok ? '✅ Gửi thành công!' : '❌ Lỗi: ' + result.error;
+        res.ok ? '✅ Đã gửi thành công!' : '❌ Lỗi: ' + (result.error || 'Unknown');
     }
   </script>
 </body>
