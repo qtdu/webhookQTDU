@@ -2,38 +2,85 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>Gửi Webhook DingTalk</title>
+  <title>Webhook Sender</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; max-width: 600px; margin: auto; }
-    input, textarea { width: 100%; padding: 8px; margin: 8px 0; }
-    button { padding: 10px 20px; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2em;
+      max-width: 800px;
+      margin: auto;
+    }
+    h1 { color: #2c3e50; }
+    textarea, input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+    }
   </style>
 </head>
 <body>
-  <h2>Gửi tin nhắn đến Webhook (qua Netlify Function)</h2>
+  <h1>📤 Gửi JSON tùy chọn đến Webhook (qua Netlify Function)</h1>
+
   <label>🔐 Webhook URL:</label>
-  <input type="text" id="webhookUrl" placeholder="Dán Webhook URL của DingTalk tại đây">
+  <input type="text" id="webhookUrl" placeholder="https://oapi.dingtalk.com/robot/send?access_token=...">
 
-  <label>✉️ Nội dung:</label>
-  <textarea id="message" placeholder="Nhập nội dung cần gửi"></textarea><br>
+  <label>📦 Nội dung JSON (DingTalk hoặc webhook khác):</label>
+  <textarea id="jsonInput" rows="12" placeholder="Dán nội dung JSON tại đây..."></textarea>
 
-  <button onclick="send()">Gửi</button>
+  <div>
+    <button onclick="send()">🚀 Gửi</button>
+    <button onclick="pasteSample()">📋 Dán mẫu DingTalk</button>
+  </div>
+
   <p id="status"></p>
 
   <script>
-    async function send() {
-      const url = document.getElementById('webhookUrl').value.trim();
-      const msg = document.getElementById('message').value.trim();
+    function pasteSample() {
+      const sample = {
+        msgtype: "markdown",
+        markdown: {
+          title: "📦 Thông báo đơn hàng",
+          text: "### 🚚 Đơn hàng mới\n\n1. 📦 Mã đơn: #12345\n2. 👤 Khách: Nguyễn Văn A\n\n![ảnh](https://via.placeholder.com/300x100)"
+        }
+      };
+      document.getElementById("jsonInput").value = JSON.stringify(sample, null, 2);
+    }
 
-      if (!url || !msg) {
-        document.getElementById('status').textContent = '⚠️ Nhập đủ Webhook URL và nội dung.';
+    async function send() {
+      const raw = document.getElementById("jsonInput").value;
+      const webhook = document.getElementById("webhookUrl").value.trim();
+      const statusEl = document.getElementById("status");
+
+      if (!webhook || !raw) {
+        statusEl.textContent = "⚠️ Vui lòng nhập Webhook URL và nội dung JSON.";
         return;
       }
 
-      const res = await fetch('/.netlify/functions/sendMessage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ webhook: url, message: msg })
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (e) {
+        statusEl.textContent = "❌ JSON không hợp lệ.";
+        return;
+      }
+
+      statusEl.textContent = "⏳ Đang gửi...";
+      const res = await fetch("/.netlify/functions/sendMessage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ webhook, payload })
       });
 
       let result;
@@ -43,8 +90,7 @@
         result = { error: "Không nhận được phản hồi JSON từ server." };
       }
 
-      document.getElementById('status').textContent =
-        res.ok ? '✅ Đã gửi thành công!' : '❌ Lỗi: ' + (result.error || 'Unknown');
+      statusEl.textContent = res.ok ? "✅ Gửi thành công!" : "❌ Lỗi: " + (result.error || "Không rõ lỗi");
     }
   </script>
 </body>
