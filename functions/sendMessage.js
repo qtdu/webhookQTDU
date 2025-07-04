@@ -1,32 +1,50 @@
 export async function handler(event, context) {
-  const WEBHOOK_URL = "https://oapi.dingtalk.com/robot/send?access_token=67e1b68517f0b043143ad99c3efe152476b965ad45d0899faab686892ff81b07"; // thay bằng webhook thật
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      body: 'Method Not Allowed'
+    };
+  }
 
-  const data = {
-    msgtype: "text",
-    text: {
-      content: "✅ Gửi tin nhắn từ Netlify Function đến DingTalk thành công!"
-    }
+  let body;
+  try {
+    body = JSON.parse(event.body || '{}');
+  } catch {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
+  }
+
+  const webhookUrl = body.webhook;
+  const content = body.message;
+
+  if (!webhookUrl || !content) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Thiếu webhook hoặc nội dung' })
+    };
+  }
+
+  const payload = {
+    msgtype: 'text',
+    text: { content }
   };
 
   try {
-    const response = await fetch(WEBHOOK_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
     });
 
-    const resText = await response.text();
-    console.log("DingTalk response:", resText);
+    const result = await response.text();
 
     return {
-      statusCode: 200,
-      body: JSON.stringify({ ok: true, status: response.status })
+      statusCode: response.status,
+      body: JSON.stringify({ ok: response.ok, result })
     };
-  } catch (error) {
-    console.error("Error sending to DingTalk:", error);
+  } catch (err) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ error: err.message })
     };
   }
 }
