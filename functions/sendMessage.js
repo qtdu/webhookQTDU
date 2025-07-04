@@ -1,9 +1,6 @@
 export async function handler(event, context) {
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: 'Method Not Allowed'
-    };
+    return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
   let body;
@@ -13,33 +10,23 @@ export async function handler(event, context) {
     return { statusCode: 400, body: JSON.stringify({ error: 'Invalid JSON' }) };
   }
 
-  const webhookUrl = body.webhook;
-  const content = body.message;
+  const { webhook, payload } = body;
 
-  if (!webhookUrl || !content) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Thiếu webhook hoặc nội dung' })
-    };
+  if (!webhook || !payload) {
+    return { statusCode: 400, body: JSON.stringify({ error: 'Thiếu webhook hoặc payload' }) };
   }
 
-  const payload = {
-    msgtype: 'text',
-    text: { content }
-  };
-
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
-    const result = await response.text();
-
+    const text = await response.text();
     return {
-      statusCode: response.status,
-      body: JSON.stringify({ ok: response.ok, result })
+      statusCode: 200,
+      body: JSON.stringify({ ok: true, response: text })
     };
   } catch (err) {
     return {
